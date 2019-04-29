@@ -59,6 +59,19 @@ public class TestDockerClient {
 		//list all containers no matter running or not. 
 		return docker.listContainers(ListContainersParam.allContainers());
 	}
+	public List<Container> getContainer(String name) {
+		List<Container> container = null;
+		try {
+			 container = docker.listContainers(ListContainersParam.filter("name", name));
+		} catch (DockerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return container;
+	}
 	
 	public List<Image> getImages() throws DockerException, InterruptedException{
 		//list images in docker host
@@ -124,13 +137,13 @@ public class TestDockerClient {
 	public ContainerCreation createContainer(RequestOfContainer rc) throws DockerException, InterruptedException {
 		Builder config = ContainerConfig.builder();
 		config.image(rc.getImage());
-		config.exposedPorts(rc.getPort());
+		config.exposedPorts(rc.getCport());
 		config.hostConfig(HostConfig
 				.builder()
 				.portBindings(
 						ImmutableMap.of(
-								rc.getPort(),ImmutableList.of(
-										PortBinding.of("0.0.0.0", rc.getPort())
+								rc.getCport(),ImmutableList.of(
+										PortBinding.of("0.0.0.0", rc.getHport())
 										)
 								)
 						).build()
@@ -138,24 +151,40 @@ public class TestDockerClient {
 		
 		return docker.createContainer(config.build());
 	}
-	public boolean startContainer(ContainerCreation container) {
-		boolean result = false;
+	public ContainerCreation startContainer(ContainerCreation container) {
+		
 		try {
 			docker.startContainer(container.id());
+			return container;
+		} catch (DockerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}
+		return null;
+	}
+	public boolean stopContainer(String id) {
+		boolean result = false;
+		try {
+			docker.stopContainer(id, 10);
+			docker.removeContainer(id);
 			result = true;
 		} catch (DockerException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			result = false;
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			result = false;
 		}
 		return result;
 	}
 	@PreDestroy
 	private void stop() {
+		log.info("close client connection");
 		docker.close();
 	}
 }
