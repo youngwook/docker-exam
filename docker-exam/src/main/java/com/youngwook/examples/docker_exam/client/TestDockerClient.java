@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,9 +23,18 @@ import com.spotify.docker.client.DockerClient.ListImagesParam;
 import com.spotify.docker.client.exceptions.DockerCertificateException;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.Container;
+import com.spotify.docker.client.messages.ContainerConfig;
+import com.spotify.docker.client.messages.ContainerConfig.Builder;
+import com.spotify.docker.client.messages.ContainerCreation;
+import com.spotify.docker.client.messages.HostConfig;
 import com.spotify.docker.client.messages.Image;
 import com.spotify.docker.client.messages.ImageSearchResult;
+import com.spotify.docker.client.messages.PortBinding;
 import com.youngwook.examples.docker_exam.domain.RequestOfBuildImage;
+import com.youngwook.examples.docker_exam.domain.RequestOfContainer;
+
+import jersey.repackaged.com.google.common.collect.ImmutableList;
+import jersey.repackaged.com.google.common.collect.ImmutableMap;
 
 @Component
 public class TestDockerClient {
@@ -60,7 +70,7 @@ public class TestDockerClient {
 		//list images with the name in docker hub and docker host(not sure)
 		return docker.searchImages(name);
 	}
-	public String buildImage(RequestOfBuildImage image)  {
+	public String buildImage(RequestOfBuildImage image)  { // this is use for local file system. 
 		String imageID ="failed";	//return String
 		URI dockerfile;				//RUL of github repository
 		try {
@@ -94,5 +104,58 @@ public class TestDockerClient {
 			return "failed";
 		}
 		return "ok";
+	}
+	public String pullImage(String image) {
+		String result ="failed";
+		try {
+			docker.pull(image);
+			result = "success!";
+		} catch (DockerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return result;
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return result;
+		}
+		return result;
+	}
+	public ContainerCreation createContainer(RequestOfContainer rc) throws DockerException, InterruptedException {
+		Builder config = ContainerConfig.builder();
+		config.image(rc.getImage());
+		config.exposedPorts(rc.getPort());
+		config.hostConfig(HostConfig
+				.builder()
+				.portBindings(
+						ImmutableMap.of(
+								rc.getPort(),ImmutableList.of(
+										PortBinding.of("0.0.0.0", rc.getPort())
+										)
+								)
+						).build()
+				);
+		
+		return docker.createContainer(config.build());
+	}
+	public boolean startContainer(ContainerCreation container) {
+		boolean result = false;
+		try {
+			docker.startContainer(container.id());
+			result = true;
+		} catch (DockerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			result = false;
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			result = false;
+		}
+		return result;
+	}
+	@PreDestroy
+	private void stop() {
+		docker.close();
 	}
 }
