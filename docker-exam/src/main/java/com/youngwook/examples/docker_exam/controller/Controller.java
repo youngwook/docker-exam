@@ -70,13 +70,15 @@ public class Controller {
 		return image;
 	}
 	@RequestMapping(value="/buildImg", method=RequestMethod.POST)
-	public String buildImage(@RequestBody RequestOfBuildImage image) {
-		//bound RequestBody with RequestOfBuildImage class to automatically convert JSON to Object
-		//invoke build image method and receive the return value with ImageID
-		log.info("image name: "+image.getName());
-		log.info("image url: " + image.getURL());
-		String imageID = docker.buildImage(image);
-		String results = docker.pushImage(imageID);
+	public String buildImage(@RequestBody HashMap<String,String> image) {
+		log.info("invoke buildImage()");
+		String results = docker.buildImage(image);
+		return results;
+	}
+	@RequestMapping(value="/pushImg/{id}", method=RequestMethod.POST)
+	public String pushImage(@PathVariable String id) {
+
+		String results = docker.pushImage(id);
 		return results;
 	}
 	
@@ -107,7 +109,7 @@ public class Controller {
 	public ContainerCreation runImage(@RequestBody RequestOfContainer container) {
 
 		ContainerCreation ct = null; 
-		docker.pullImage(container.getImage());
+//		docker.pullImage(container.getImage());
 		try {
 			ct = docker.startContainer(docker.createContainer(container));
 
